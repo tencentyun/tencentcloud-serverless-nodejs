@@ -1,6 +1,6 @@
 {
   "name": "tencentcloud-serverless-nodejs",
-  "version": "0.0.26",
+  "version": "1.0.0",
   "description": "Tencentcloud-serverless SDK for Nodejs",
   "main": "./dist/index.js",
   "repository": "https://github.com/tencentyun/tencentcloud-serverless-nodejs.git",

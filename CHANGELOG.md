@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file. See [standard-version](https://github.com/conventional-changelog/standard-version) for commit guidelines.
 
+<a name="1.0.0"></a>
+# [1.0.0](https://github.com/tencentyun/tencentcloud-serverless-nodejs/compare/v0.0.26...v1.0.0) (2020-06-16)
+
+
+### Features
+
+* 大版本升级，新增支持异步调用、灰度流量、输出log ([c1af7c5](https://github.com/tencentyun/tencentcloud-serverless-nodejs/commit/c1af7c5))
+
+
+### BREAKING CHANGES
+
+* 引入及调用API有修改，必须先初始化再调用，用new SDK()初始化sdk，调用不再接收secretId和secretKey参数，新增支持新功能的调用参数
+
+
+
 <a name="0.0.26"></a>
 ## [0.0.26](https://github.com/Lighting-Jack/tencentcloud-serverless-nodejs/compare/v0.0.25...v0.0.26) (2019-12-27)
 
