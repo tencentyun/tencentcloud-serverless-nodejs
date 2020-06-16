@@ -1,54 +1,42 @@
-import * as services from './services'
-import * as Capi from 'qcloudapi-sdk'
-import { InitConfig, ExtraParams } from './helper/types'
-import { ERR_MISSING_SECRET } from './helper/error'
-import * as assign from 'object-assign'
-import * as qs from 'querystring'
-import * as request from 'request'
-import * as _ from 'lodash'
+import { Capi, CapiInstance } from '@tencent-sdk/capi'
+import { InitConfig } from './helper/types'
+import {
+  MISSING_SECRET_ERROR,
+  NOT_INIT_ERROR,
+  REQUEST_ERROR
+} from './helper/error'
 
-///////////////////////////////////////////////
-/**
- * request 重写
- * - 原始的方法只往外传body，而不传response，像状态码等详细信息获取不到
- */
-//////////////////////////////////////////////
-Capi.prototype.request = function(data, opts, callback, extra) {
-  if (typeof opts === 'function') {
-    callback = opts
-    opts = this.defaults
-  }
-  opts = opts || this.defaults
-  callback = callback || Function.prototype
-
-  var url = this.generateUrl(opts)
-  var method = (opts.method || this.defaults.method).toUpperCase()
-  var dataStr = this.generateQueryString(data, opts)
-  var option = { url: url, method: method, json: true, strictSSL: false }
-  var maxKeys =
-    opts.maxKeys === undefined ? this.defaults.maxKeys : opts.maxKeys
-
-  if (method === 'POST') {
-    option['form'] = qs.parse(dataStr, null, null, {
-      maxKeys: maxKeys
-    })
-  } else {
-    option.url += '?' + dataStr
-  }
-
-  assign(option, extra)
-
-  request(option, function(error, response, body) {
-    callback(error, response, body)
-  })
+export enum InvocationType {
+  'RequestResponse' = 'RequestResponse', //同步调用（默认值）
+  'Event' = 'Event' //异步调用
 }
 
-class SDK {
-  public config: InitConfig
-  public requestHelper
-  public extraParams: ExtraParams
+export enum LogType {
+  'Tail' = 'Tail', //输出日志
+  'None' = 'None' //不输出日志（默认值）
+}
 
-  init(config?: InitConfig, extraParams?: ExtraParams) {
+interface InvokeParam {
+  /**函数名 */
+  functionName: string
+  /**版本/别名 */
+  qualifier?: string
+  /**运行函数的参数 */
+  data?: string | object
+  /**函数所在命名空间 */
+  namespace?: string
+  /**同步/异步调用 */
+  invocationType?: InvocationType
+  /**函数灰度流量控制调用，以json格式传入，例如{"k":"v"}，注意kv都需要是字符串类型，最大支持的参数长度是1024字节*/
+  routingKey?: string | object
+  /**是否输出日志 */
+  logType?: LogType
+}
+
+export class SDK {
+  public client: CapiInstance
+
+  constructor(config?: InitConfig) {
     const defaultConfig = {
       secretId: process.env.TENCENTCLOUD_SECRETID,
       secretKey: process.env.TENCENTCLOUD_SECRETKEY,
@@ -56,55 +44,50 @@ class SDK {
       region: 'ap-guangzhou'
     }
 
-    const defaultExtraParams = {
-      forever: true
-    }
-
-    const __config = _.omitBy(_.merge({}, defaultConfig, config), _.isUndefined)
-    const __extraParams = _.omitBy(
-      _.merge({}, defaultExtraParams, extraParams),
-      _.isUndefined
-    )
-
-    if (!__config.secretId || !__config.secretKey)
-      return console.warn(ERR_MISSING_SECRET)
-
-    this.extraParams = __extraParams
-    this.config = __config
-
-    const isScf = process.env.TENCENTCLOUD_RUNENV === 'SCF'
-
-    const capi = new Capi({
-      SecretId: __config.secretId,
-      SecretKey: __config.secretKey,
-      serviceType: 'scf',
-      path: '/',
-      baseHost: isScf ? 'internal.tencentcloudapi.com' : 'tencentcloudapi.com',
-      protocol: 'https'
+    const mergedConfig = { ...defaultConfig, ...config }
+    if (!mergedConfig.secretId || !mergedConfig.secretKey)
+      throw new MISSING_SECRET_ERROR()
+    this.client = new Capi({
+      Region: mergedConfig.region,
+      SecretId: mergedConfig.secretId,
+      SecretKey: mergedConfig.secretKey,
+      Token: mergedConfig.token,
+      ServiceType: 'scf'
     })
-    this.requestHelper = (data, opts, extra) => {
-      return new Promise((res, rej) => {
-        capi.request(
-          data,
-          opts,
-          (err, response, body) => {
-            if (err) return rej(err)
-            if (__extraParams.time && response)
-              console.log(response.timingPhases)
-            res(body)
-          },
-          extra
-        )
-      })
-    }
   }
+
 
   _reset() {
-    this.config = null
-    this.requestHelper = null
+    this.client = null
   }
 
-  invoke = services.invoke
+  async invoke(invokeParam: InvokeParam) {
+    if (!this.client) {
+      throw new NOT_INIT_ERROR()
+    }
+    const res = await this.client.request(
+      {
+        Action: 'Invoke',
+        Version: '2018-04-16',
+        FunctionName: invokeParam.functionName,
+        InvocationType: invokeParam.invocationType,
+        Qualifier: invokeParam.qualifier,
+        ClientContext: typeof invokeParam.data === 'string' ? invokeParam.data : JSON.stringify(invokeParam.data),
+        Namespace: invokeParam.namespace,
+        RoutingKey: typeof invokeParam.routingKey === 'string'? invokeParam.routingKey : JSON.stringify(invokeParam.routingKey),
+        LogType: invokeParam.logType
+      },
+      {
+        host: 'scf.tencentcloudapi.com'
+      },
+      true
+    )
+    if (res && res.Response) {
+      return res.Response
+    } else {
+      throw new REQUEST_ERROR('Got no response:' + JSON.stringify(res))
+    }
+  }
 }
 
-export = new SDK()
+export default SDK

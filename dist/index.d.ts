@@ -1,12 +1,26 @@
-import * as services from './services';
-import { InitConfig, ExtraParams } from './helper/types';
-declare class SDK {
-    config: InitConfig;
-    requestHelper: any;
-    extraParams: ExtraParams;
-    init(config?: InitConfig, extraParams?: ExtraParams): void;
-    _reset(): void;
-    invoke: typeof services.invoke;
+import { CapiInstance } from '@tencent-sdk/capi';
+import { InitConfig } from './helper/types';
+export declare enum InvocationType {
+    'RequestResponse' = "RequestResponse",
+    'Event' = "Event"
 }
-declare const _default: SDK;
-export = _default;
+export declare enum LogType {
+    'Tail' = "Tail",
+    'None' = "None"
+}
+interface InvokeParam {
+    functionName: string;
+    qualifier?: string;
+    data?: string | object;
+    namespace?: string;
+    invocationType?: InvocationType;
+    routingKey?: string | object;
+    LogType?: LogType;
+}
+export declare class SDK {
+    client: CapiInstance;
+    constructor(config?: InitConfig);
+    _reset(): void;
+    invoke(invokeParam: InvokeParam): Promise<any>;
+}
+export default SDK;

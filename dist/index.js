@@ -1,80 +1,64 @@
 "use strict";
-const services = require("./services");
-const Capi = require("qcloudapi-sdk");
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.SDK = exports.LogType = exports.InvocationType = void 0;
+const capi_1 = require("@tencent-sdk/capi");
 const error_1 = require("./helper/error");
-const assign = require("object-assign");
-const qs = require("querystring");
-const request = require("request");
-const _ = require("lodash");
-Capi.prototype.request = function (data, opts, callback, extra) {
-    if (typeof opts === 'function') {
-        callback = opts;
-        opts = this.defaults;
-    }
-    opts = opts || this.defaults;
-    callback = callback || Function.prototype;
-    var url = this.generateUrl(opts);
-    var method = (opts.method || this.defaults.method).toUpperCase();
-    var dataStr = this.generateQueryString(data, opts);
-    var option = { url: url, method: method, json: true, strictSSL: false };
-    var maxKeys = opts.maxKeys === undefined ? this.defaults.maxKeys : opts.maxKeys;
-    if (method === 'POST') {
-        option['form'] = qs.parse(dataStr, null, null, {
-            maxKeys: maxKeys
-        });
-    }
-    else {
-        option.url += '?' + dataStr;
-    }
-    assign(option, extra);
-    request(option, function (error, response, body) {
-        callback(error, response, body);
-    });
-};
+var InvocationType;
+(function (InvocationType) {
+    InvocationType["RequestResponse"] = "RequestResponse";
+    InvocationType["Event"] = "Event";
+})(InvocationType = exports.InvocationType || (exports.InvocationType = {}));
+var LogType;
+(function (LogType) {
+    LogType["Tail"] = "Tail";
+    LogType["None"] = "None";
+})(LogType = exports.LogType || (exports.LogType = {}));
 class SDK {
-    constructor() {
-        this.invoke = services.invoke;
-    }
-    init(config, extraParams) {
+    constructor(config) {
         const defaultConfig = {
             secretId: process.env.TENCENTCLOUD_SECRETID,
             secretKey: process.env.TENCENTCLOUD_SECRETKEY,
             token: process.env.TENCENTCLOUD_SESSIONTOKEN,
             region: 'ap-guangzhou'
         };
-        const defaultExtraParams = {
-            forever: true
-        };
-        const __config = _.omitBy(_.merge({}, defaultConfig, config), _.isUndefined);
-        const __extraParams = _.omitBy(_.merge({}, defaultExtraParams, extraParams), _.isUndefined);
-        if (!__config.secretId || !__config.secretKey)
-            return console.warn(error_1.ERR_MISSING_SECRET);
-        this.extraParams = __extraParams;
-        this.config = __config;
-        const isScf = process.env.TENCENTCLOUD_RUNENV === 'SCF';
-        const capi = new Capi({
-            SecretId: __config.secretId,
-            SecretKey: __config.secretKey,
-            serviceType: 'scf',
-            path: '/',
-            baseHost: isScf ? 'internal.tencentcloudapi.com' : 'tencentcloudapi.com',
-            protocol: 'https'
+        const mergedConfig = Object.assign(Object.assign({}, defaultConfig), config);
+        if (!mergedConfig.secretId || !mergedConfig.secretKey)
+            throw new error_1.MISSING_SECRET_ERROR();
+        this.client = new capi_1.Capi({
+            Region: mergedConfig.region,
+            SecretId: mergedConfig.secretId,
+            SecretKey: mergedConfig.secretKey,
+            Token: mergedConfig.token,
+            ServiceType: 'scf'
         });
-        this.requestHelper = (data, opts, extra) => {
-            return new Promise((res, rej) => {
-                capi.request(data, opts, (err, response, body) => {
-                    if (err)
-                        return rej(err);
-                    if (__extraParams.time && response)
-                        console.log(response.timingPhases);
-                    res(body);
-                }, extra);
-            });
-        };
     }
     _reset() {
-        this.config = null;
-        this.requestHelper = null;
+        this.client = null;
+    }
+    async invoke(invokeParam) {
+        if (!this.client) {
+            throw new error_1.NOT_INIT_ERROR();
+        }
+        const res = await this.client.request({
+            Action: 'Invoke',
+            Version: '2018-04-16',
+            FunctionName: invokeParam.functionName,
+            InvocationType: invokeParam.invocationType,
+            Qualifier: invokeParam.qualifier,
+            ClientContext: JSON.stringify(invokeParam.data),
+            Namespace: invokeParam.namespace,
+            RoutingKey: invokeParam.routingKey,
+            LogType: invokeParam.LogType
+        }, {
+            host: 'scf.tencentcloudapi.com'
+        }, true);
+        if (res && res.Response) {
+            return res.Response;
+        }
+        else {
+            throw new error_1.REQUEST_ERROR('Got no response:' + JSON.stringify(res));
+        }
     }
 }
-module.exports = new SDK();
+exports.SDK = SDK;
+exports.default = SDK;

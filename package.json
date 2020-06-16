@@ -3,8 +3,8 @@
   "version": "0.0.26",
   "description": "Tencentcloud-serverless SDK for Nodejs",
   "main": "./dist/index.js",
-  "repository": "https://github.com/Lighting-Jack/tencentcloud-serverless-nodejs",
-  "author": "Lighting-Jack",
+  "repository": "https://github.com/tencentyun/tencentcloud-serverless-nodejs.git",
+  "author": "ycp424c",
   "license": "MIT",
   "scripts": {
     "init": "commitizen init cz-conventional-changelog --save --save-exact",
@@ -51,10 +51,6 @@
     "serverless"
   ],
   "dependencies": {
-    "lodash": "^4.17.15",
-    "lodash.merge": "^4.6.2",
-    "object-assign": "3.0.0",
-    "qcloudapi-sdk": "^0.2.1",
-    "request": "^2.88.0"
+    "@tencent-sdk/capi": "^0.2.17"
   }
 }

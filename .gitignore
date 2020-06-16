@@ -5,3 +5,4 @@ coverage
 secret.json
 .vscode
 *.log
+test.js
