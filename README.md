@@ -7,6 +7,10 @@
 
 腾讯云云函数SDK，集成云函数业务流接口
 
+## 配置需求
+- 打开函数外网访问权限
+- 如果没有手动传入secretId和secretKey等参数，函数需绑定有SCF Invoke 权限（或者包含SCF Invoke，比如SCF FullAccess）的角色
+
 ## Install
 ```shell
 npm install tencentcloud-serverless-nodejs
@@ -52,7 +56,7 @@ exports.main_handler = async (event, context) => {
 
 **new SDK(Params)**
 
-使用SDK前，可以选择初始化SDK，这个并不是强制要求的操作，只是为了方便调用API接口时，复用初始化的配置。参数中undefined的值会被忽略。
+使用SDK前，需要先初始化SDK，参数中undefined的值会被忽略。
 
 **Params:**
 
