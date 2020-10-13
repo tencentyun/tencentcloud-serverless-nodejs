@@ -51,6 +51,6 @@
     "serverless"
   ],
   "dependencies": {
-    "@tencent-sdk/capi": "^0.2.17"
+    "@tencent-sdk/capi": "^1.1.5"
   }
 }
